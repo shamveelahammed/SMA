@@ -213,6 +213,48 @@ ggplot(data=Sentimentscores_christian,aes(x=sentiment,y=Score))+geom_bar(aes(fil
 
 ```
 
+#Topic Model
+```{r}
+library(textmineR)
+dtm_muslim <- CreateDtm(tweet_df_muslim$x,
+                  doc_names = tweet_df_muslim$X,
+                  ngram_window = c(1, 2))
+
+rowTotals <- apply(dtm_muslim , 1, sum)  #Find the sum of words in each Document
+dtm_muslim.new   <- dtm_muslim[rowTotals> 0, ]  #remove all docs without words
+
+library(topicmodels)
+
+models_muslim <-  list( VEM = LDA(dtm_muslim.new, k = 10) )
+lapply(models_muslim, terms, 10)
+
+lda_muslim <- LDA(dtm_muslim.new, k = 10) 
+# topic <- topics(lda, 1)
+lda_muslim.topics <- as.matrix(topics(lda_muslim))
+write.csv(lda_muslim.topics,file="IslamTopics.csv")
+
+
+# Christian Tweets
+dtm_christian<- CreateDtm(tweet_df_christian$x,
+                  doc_names = tweet_df_christian$X,
+                  ngram_window = c(1, 2))
+
+rowTotals <- apply(dtm_christian , 1, sum)  #Find the sum of words in each Document
+dtm_christian.new   <- dtm_christian[rowTotals> 0, ]  #remove all docs without words
+
+
+models_christian <-  list( VEM = LDA(dtm_christian.new, k = 10) )
+lapply(models_christian, terms, 10)
+
+lda_christian <- LDA(dtm_christian.new, k = 10) 
+# topic <- topics(lda, 1)
+lda_christian.topics <- as.matrix(topics(lda_christian))
+write.csv(lda_christian.topics,file="ChristianTopics.csv")
+
+
+
+
+```
 
 
 # Emotion Plot
