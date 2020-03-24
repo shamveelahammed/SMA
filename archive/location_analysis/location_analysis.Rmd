@@ -19,11 +19,10 @@ library(ROAuth)
 # authenticate with Twitter
 
 # DON'T UPLOAD THE KEYS ON GITHUB, AS THIS IS PUBLIC REPO
-consumerKey<-	"G51KUQTqdYzMWk0XBoHpGPah2"
-consumerSecret<-"9ILQpHv5E5QElY8bfRzqy9Z3b8WIeOctBC4vlX2CplPnPaUgUF"
-
-accessToken<-"1844121-FnMyAIkRngSjqEsniQsTOQvyIYkGQWvKHGXJLlkMHJ"
-accessSecret<-"A9hLM7MSfTmIxlN5fRKfQZmeezn0FamNXKWqyzeeJVJAN"
+consumerKey<-	"XXX"
+consumerSecret<-"XXX"
+accessToken<-"XXX"
+accessSecret<-"XXX"
 
 
 setup_twitter_oauth (consumerKey, consumerSecret, accessToken, accessSecret)  # authenticate
