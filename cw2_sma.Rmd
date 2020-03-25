@@ -8,6 +8,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 load_libraries <- function(){
   library(twitteR)
+  library(rtweet)
   library(ROAuth)
   library(syuzhet)
   library(plotly)
@@ -29,13 +30,22 @@ load_libraries()
 ```{r}
 connect_to_twitter <- function(){
   # DON'T UPLOAD THE KEYS ON GITHUB, AS THIS IS A PUBLIC REPO
+  appname <- "XXX"
   consumerKey<-	"XXX"
   consumerSecret<-"XXX"
   accessToken<-"XXX"
   accessSecret<-"XXX"
 
-  # authenticate with Twitter
+  # authenticate with Twitter for twitteR
   setup_twitter_oauth (consumerKey, consumerSecret, accessToken, accessSecret)
+  
+  # authenticate with Twitter for rtweet
+  twitter_token <- create_token(
+  app = appname,
+  consumer_key = consumerKey,
+  consumer_secret = consumerSecret,
+  access_token = accessToken,
+  access_secret = accessSecret)
 
 }
 ```
@@ -341,5 +351,98 @@ Viz1
 
 ```
 
+### Word cloud for tweets in the last month.
+#### Fetch the tweets
+```{r, eval=FALSE}
+
+month_days <- seq(1, 30, by=1)
+
+for( i in month_days) {
+  
+    # Prepare parameters
+    t_rnd = sample(1:(24*60*60), 1)
+    toDate <- format(Sys.time() - 60 * 60 * 24 * i - t_rnd, "%Y%m%d%H%M")
+    
+    # Apply search for the whole month usign the the word "muslims".
+    tweets_tmp <- search_30day("muslims", n = 100 ,env_name = "dev30", parse=TRUE, toDate = toDate)
+    
+    # Append to the list 'tweets' if not there, create it !.
+    if(exists("tweets")) {
+        tweets <- rbind(tweets, tweets_tmp)
+    } else {
+        tweets <- tweets_tmp
+    }
+  
+}
+
+# Export the results as CSV.
+write_as_csv(tweets, '30_day_tweets.csv')
+```
+
+#### Clean up and prepare the tweets
+
+```{r, eval=FALSE}
+# import your data set to analyse,
+# ensure it is in the same directory as your code, otherwise you need to add the path
+dataset_csv <- read.csv(file="30_day_tweets.csv")
+tweets.df <- dataset_csv['text']
+
+# convert text to lowercase
+tweets.df<-tolower(tweets.df)
+
+# get rid of problem characters
+tweets.df <- sapply(tweets.df,function(row) iconv(row, "latin1", "ASCII", sub=""))
+
+# remove punctuation, digits, special characters etc
+tweets.df = gsub("&amp", "", tweets.df)
+tweets.df= gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", tweets.df)
+tweets.df = gsub("@\\w+", "", tweets.df)
+tweets.df= gsub("[[:punct:]]", "", tweets.df)
+tweets.df = gsub("[[:digit:]]", "", tweets.df)
+tweets.df = gsub("http\\w+", "", tweets.df)
+tweets.df = gsub("[ \t]{2,}", "", tweets.df)
+tweets.df= gsub("^\\s+|\\s+$", "", tweets.df) 
+
+
+# get rid of unnecessary spaces
+tweets.df <- str_replace_all(tweets.df," "," ")
+
+# get rid of URLs
+#tweets.df <- str_replace_all(tweets.df, "http://t.co/[a-z,A-Z,0-9]*{8}","")
+
+# take out the retweet header (there is only one)
+tweets.df <- str_replace(tweets.df,"RT @[a-z,A-Z]*: ","")
+
+# get rid of hashtags
+tweets.df <- str_replace_all(tweets.df,"#[a-z,A-Z]*","")
+
+# get rid of references to other screen names
+tweets.df <- str_replace_all(tweets.df,"@[a-z,A-Z]*","") 
+```
+
+#### Prepare and generate the world cloud
+
+```{r, eval=FALSE}
+# Create a copy
+tweets2.df <- tweets.df
+
+# Remove frequent word so the world cloud is not distorted.
+tweets2.df= gsub("rta", "", tweets2.df) 
+tweets2.df= gsub("muslims", "", tweets2.df) 
+tweets2.df= gsub("muslim", "", tweets2.df) 
+
+# corpus will hold a collection of text documents
+tweet_corpus <- Corpus(VectorSource(tweets2.df)) 
+tweet_corpus
+inspect(tweet_corpus[1])
+
+# clean text
+tweet_clean <- tm_map(tweet_corpus, removePunctuation)
+tweet_clean <- tm_map(tweet_clean, removeWords, stopwords("english"))
+tweet_clean <- tm_map(tweet_clean, removeNumbers)
+tweet_clean <- tm_map(tweet_clean, stripWhitespace)
+wordcloud(tweet_clean, random.order=0.5,max.words=30, col=rainbow(50),min.freq = 20)
+
+```
 
 ## TODO: Location Analysis
