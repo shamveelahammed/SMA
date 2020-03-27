@@ -1,0 +1,448 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown for CW2 SOCIAL MEDIA ANALYSIS on ISLAMOPHOBIA
+
+## Load all required libraries
+```{r}
+load_libraries <- function(){
+  library(twitteR)
+  library(rtweet)
+  library(ROAuth)
+  library(syuzhet)
+  library(plotly)
+  library(tm)
+  library(wordcloud)~
+  library(textmineR)
+  library(topicmodels)
+  library(plyr)
+  library(stringr)
+  library(ggplot2)
+  library(scales)
+}
+load_libraries()
+```
+
+
+
+## Set up twiter connection
+```{r}
+connect_to_twitter <- function(){
+  # DON'T UPLOAD THE KEYS ON GITHUB, AS THIS IS A PUBLIC REPO
+  appname <- "XXX"
+  consumerKey<-	"XXX"
+  consumerSecret<-"XXX"
+  accessToken<-"XXX"
+  accessSecret<-"XXX"
+
+  # authenticate with Twitter for twitteR
+  setup_twitter_oauth (consumerKey, consumerSecret, accessToken, accessSecret)
+  
+  # authenticate with Twitter for rtweet
+  twitter_token <- create_token(
+  app = appname,
+  consumer_key = consumerKey,
+  consumer_secret = consumerSecret,
+  access_token = accessToken,
+  access_secret = accessSecret)
+
+}
+```
+
+
+## Collect all Muslim Tweets 
+```{r, eval=FALSE}
+connect_to_twitter()
+
+
+# search for tweets by keyword "MUSLIM"
+tweets<-searchTwitter("muslim", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+                                resultType=NULL, retryOnRateLimit=120)
+tweets_muslim<-twListToDF(tweets) # put tweets in a data frame
+
+
+# search for tweets by keyword "ISLAM"
+tweets<-searchTwitter("islam", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+                                resultType=NULL, retryOnRateLimit=120)
+tweets_islam<-twListToDF(tweets)
+
+
+# search for tweets by keyword "Arab"
+tweets<-searchTwitter("arab", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+                                resultType=NULL, retryOnRateLimit=120)
+tweets_arab<-twListToDF(tweets)
+
+
+# search for tweets by keyword "Muhammad"
+tweets<-searchTwitter("muhammad", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+                                resultType=NULL, retryOnRateLimit=120)
+tweets_muhammad<-twListToDF(tweets)
+
+
+all_muslim_tweets <- rbind(tweets_muslim, tweets_islam, tweets_arab, tweets_muhammad)
+# write out to a CSV file
+write.csv(all_muslim_tweets, file="muslim_tweets.csv")
+
+```
+
+## Collect all Christian Tweets 
+```{r}
+
+connect_to_twitter()
+
+# search for tweets by keyword
+tweets<-searchTwitter("christian", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+                                resultType=NULL, retryOnRateLimit=120)
+# put tweets in a data frame
+tweets_christian<-twListToDF(tweets)
+
+tweets<-searchTwitter("christ", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+                                resultType=NULL, retryOnRateLimit=120)
+# put tweets in a data frame
+tweets_christ<-twListToDF(tweets)
+
+tweets<-searchTwitter("catholic", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+                                resultType=NULL, retryOnRateLimit=120)
+# put tweets in a data frame
+tweets_catholic<-twListToDF(tweets)
+
+tweets<-searchTwitter("church", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+                                resultType=NULL, retryOnRateLimit=120)
+# put tweets in a data frame
+tweets_church<-twListToDF(tweets)
+
+all_christian_tweets <- rbind(tweets_christian, tweets_christ, tweets_catholic, tweets_church)
+# write out to a CSV file
+write.csv(all_christian_tweets, file="christian_tweets.csv")
+
+```
+
+
+## Data Cleaning
+In this step we will clean the data obtained from Twitter. The general steps taken to clean a set of tweets are outlined. Additional lines may be required depending on the desired output. Other forms of textual data sets may require additional steps/forms of cleaning. For this specific code, do ensure that you import a CSV file and that the column containing the text that you want to clean is named "Text".
+```{r}
+#import your dataset to analyse, 
+#ensure it is in the same directory as your code, 
+#otherwise you need to add the path
+
+clean_tweet_data <- function(csv_file){  
+  tweets <- read.csv(csv_file)
+  clean_tweets = tweets$text
+  
+  print(length(clean_tweets))
+  
+  #clean_tweets = sapply(tweets, function(x) x$getText())
+  # remove retweet entities
+  clean_tweets = gsub('(RT|via)((?:\\b\\W*@\\w+)+)', '', clean_tweets)
+  # remove at people
+  clean_tweets = gsub('@\\w+', '', clean_tweets)
+  # remove punctuation
+  clean_tweets = gsub('[[:punct:]]', '', clean_tweets)
+  # remove numbers
+  clean_tweets = gsub('[[:digit:]]', '', clean_tweets)
+  # remove html links
+  clean_tweets = gsub('http\\w+', '', clean_tweets)
+  # remove unnecessary spaces
+  clean_tweets = gsub('[ \t]{2,}', '', clean_tweets)
+  clean_tweets = gsub('^\\s+|\\s+$', '', clean_tweets)
+  # remove emojis or special characters
+  clean_tweets = gsub('<.*>', '', enc2native(clean_tweets))
+  
+  clean_tweets_lower = tolower(clean_tweets)
+
+  write.csv(clean_tweets_lower, file=sprintf("clean_%s",csv_file))
+}
+
+clean_tweet_data("muslim_tweets.csv")
+clean_tweet_data("christian_tweets.csv")
+```
+
+
+## Word Cloud
+This code will perform cleaning over a set of tweets and generate a word cloud. It requires a CSV file where the column containing the text is named "Text".
+```{r}
+
+tweet_df_muslim<-read.csv("clean_muslim_tweets.csv")
+muslim_corpus <- Corpus(VectorSource(tweet_df_muslim$x))
+muslim_corpus <- tm_map(muslim_corpus, function(x)removeWords(x,stopwords()))
+
+
+tweet_df_christian<-read.csv("clean_christian_tweets.csv")
+christian_corpus <- Corpus(VectorSource(tweet_df_christian$x))
+christian_corpus <- tm_map(christian_corpus, function(x)removeWords(x,stopwords()))
+
+# generate wordcloud
+wordcloud(muslim_corpus,min.freq = 10,colors=brewer.pal(8, "Dark2"),random.color = TRUE,max.words = 500)
+wordcloud(christian_corpus,min.freq = 10,colors=brewer.pal(8, "Dark2"),random.color = TRUE,max.words = 500)
+```
+
+
+## Sentiment Analysis
+```{r}
+tweet_df_muslim$x <- as.character(tweet_df_muslim$x)
+muslim_text<- tweet_df_muslim$x
+#getting emotions using in-built function
+sentiment_muslim<-get_nrc_sentiment((muslim_text))
+
+#calculationg total score for each sentiment
+Sentimentscores_muslim<-data.frame(colSums(sentiment_muslim[,]))
+
+names(Sentimentscores_muslim)<-"Score"
+Sentimentscores_muslim<-cbind("sentiment"=rownames(Sentimentscores_muslim),Sentimentscores_muslim)
+rownames(Sentimentscores_muslim)<-NULL
+
+ggplot(data=Sentimentscores_muslim,aes(x=sentiment,y=Score))+geom_bar(aes(fill=sentiment),stat = "identity")+
+  theme(legend.position="none")+
+  xlab("Sentiments")+ylab("scores")+ggtitle("Sentiments of people behind the tweets on Muslim")
+
+
+
+tweet_df_christian$x <- as.character(tweet_df_christian$x) 
+christian_text<- tweet_df_christian$x
+#getting emotions using in-built function
+sentiment_christian<-get_nrc_sentiment((christian_text))
+
+#calculationg total score for each sentiment
+Sentimentscores_christian<-data.frame(colSums(sentiment_christian[,]))
+
+names(Sentimentscores_christian)<-"Score"
+Sentimentscores_christian<-cbind("sentiment"=rownames(Sentimentscores_christian),Sentimentscores_christian)
+rownames(Sentimentscores_christian)<-NULL
+
+ggplot(data=Sentimentscores_christian,aes(x=sentiment,y=Score))+geom_bar(aes(fill=sentiment),stat = "identity")+
+  theme(legend.position="none")+
+  xlab("Sentiments")+ylab("scores")+ggtitle("Sentiments of people behind the tweets on Christian")
+```
+
+## Emotion Plot
+```{r}
+emotions <- get_nrc_sentiment(clean_christian_tweets)
+emo_bar = colSums(emotions)
+emo_sum = data.frame(count=emo_bar, emotion=names(emo_bar))
+emo_sum$emotion = factor(emo_sum$emotion, levels=emo_sum$emotion[order(emo_sum$count, decreasing = TRUE)])
+
+emo_sum <- emo_sum[1:8,]
+emo_sum$percent<-(emo_sum$count/sum(emo_sum$count))*100
+  
+   #Visualize the emotions from NRC sentiments
+plot_ly(emo_sum, x=~emotion, y=~percent, type="bar", color=~emotion) %>%
+layout(xaxis=list(title=""),  yaxis = list(title = "Emotion count"),
+showlegend=FALSE,title="Distribution of emotion categories") %>%
+layout(yaxis = list(ticksuffix = "%"))
+```
+
+
+## Topic Model
+```{r}
+dtm_muslim <- CreateDtm(tweet_df_muslim$x,
+                  doc_names = tweet_df_muslim$X,
+                  ngram_window = c(1, 2))
+
+rowTotals <- apply(dtm_muslim , 1, sum)  #Find the sum of words in each Document
+dtm_muslim.new   <- dtm_muslim[rowTotals> 0, ]  #remove all docs without words
+
+
+models_muslim <-  list( VEM = LDA(dtm_muslim.new, k = 10) )
+lapply(models_muslim, terms, 10)
+
+lda_muslim <- LDA(dtm_muslim.new, k = 10) 
+lda_muslim.topics <- as.matrix(topics(lda_muslim))
+write.csv(lda_muslim.topics,file="IslamTopics.csv")
+
+
+# Christian Tweets
+dtm_christian<- CreateDtm(tweet_df_christian$x,
+                  doc_names = tweet_df_christian$X,
+                  ngram_window = c(1, 2))
+
+rowTotals <- apply(dtm_christian , 1, sum)  #Find the sum of words in each Document
+dtm_christian.new   <- dtm_christian[rowTotals> 0, ]  #remove all docs without words
+
+
+models_christian <-  list( VEM = LDA(dtm_christian.new, k = 10) )
+lapply(models_christian, terms, 10)
+
+lda_christian <- LDA(dtm_christian.new, k = 10) 
+lda_christian.topics <- as.matrix(topics(lda_christian))
+write.csv(lda_christian.topics,file="ChristianTopics.csv")
+```
+
+
+## Detecting Sentiment Polarity
+This code uses an external sentiment lexicon to detect the polarity of a text corpora. It classifies the sentiment of a piece of text as either positive, negative or neutral using the positive and negative sentiment lexicons. Do ensure that the positive and negative lexicon are in the same directory as the code.
+```{r}
+#import dataset and get the text column to analyse
+tweets <- read.csv("muslim_tweets.csv")
+clean_tweets.df = tweets$text
+
+#Reading the Lexicon positive and negative words
+pos <- readLines("positive_words.txt")
+neg <- readLines("negative_words.txt")
+
+#function to calculate sentiment score
+score.sentiment <- function(sentences, pos.words, neg.words, .progress='none')
+{
+  # Parameters
+  # sentences: vector of text to score
+  # pos.words: vector of words of postive sentiment
+  # neg.words: vector of words of negative sentiment
+  # .progress: passed to laply() to control of progress bar
+  
+  # create simple array of scores with laply
+  scores <- laply(sentences,
+                  function(sentence, pos.words, neg.words)
+                  {
+                    # remove punctuation
+                    sentence <- gsub("[[:punct:]]", "", sentence)
+                    # remove control characters
+                    sentence <- gsub("[[:cntrl:]]", "", sentence)
+                    # remove digits
+                    sentence <- gsub('\\d+', '', sentence)
+                    
+                    #convert to lower
+                    sentence <- tolower(sentence)
+                    
+                    
+                    # split sentence into words with str_split (stringr package)
+                    word.list <- str_split(sentence, "\\s+")
+                    words <- unlist(word.list)
+                    
+                    # compare words to the dictionaries of positive & negative terms
+                    pos.matches <- match(words, pos)
+                    neg.matches <- match(words, neg)
+                    
+                    # get the position of the matched term or NA
+                    # we just want a TRUE/FALSE
+                    pos.matches <- !is.na(pos.matches)
+                    neg.matches <- !is.na(neg.matches)
+                    
+                    # final score
+                    score <- sum(pos.matches) - sum(neg.matches)
+                    return(score)
+                  }, pos.words, neg.words, .progress=.progress )
+  # data frame with scores for each sentence
+  scores.df <- data.frame(text=sentences, score=scores)
+  return(scores.df)
+}
+
+#sentiment score
+scores_twitter <- score.sentiment(clean_tweets.df, pos.txt, neg.txt, .progress='text')
+
+
+#View(scores_twitter)
+
+#Summary of the sentiment scores
+summary(scores_twitter)
+
+scores_twitter$score_chr <- ifelse(scores_twitter$score < 0,'Negative', ifelse(scores_twitter$score > 0, 'Positive', 'Neutral'))
+View(clean_tweets.df)
+View(scores_twitter)
+
+#Convert score_chr to factor for visualizations
+scores_twitter$score_chr <- as.factor(scores_twitter$score_chr)
+names(scores_twitter)[3]<-paste("Sentiment")
+
+#plot to show number of negative, positive and neutral comments
+Viz1 <- ggplot(scores_twitter, aes(x=Sentiment, fill=Sentiment))+ geom_bar(aes(y = (..count..)/sum(..count..))) + 
+  scale_y_continuous(labels = percent)+labs(y="Score")+
+  theme(text =element_text(size=15))+theme(axis.text = element_text(size=15))+ theme(legend.position="none")+ coord_cartesian(ylim=c(0,0.6)) + scale_fill_manual(values=c("firebrick1", "grey50", "limeGREEN"))
+Viz1
+
+```
+
+### Word cloud for tweets in the last month.
+#### Fetch the tweets
+```{r, eval=FALSE}
+
+month_days <- seq(1, 30, by=1)
+
+for( i in month_days) {
+  
+    # Prepare parameters
+    t_rnd = sample(1:(24*60*60), 1)
+    toDate <- format(Sys.time() - 60 * 60 * 24 * i - t_rnd, "%Y%m%d%H%M")
+    
+    # Apply search for the whole month usign the the word "muslims".
+    tweets_tmp <- search_30day("muslims", n = 100 ,env_name = "dev30", parse=TRUE, toDate = toDate)
+    
+    # Append to the list 'tweets' if not there, create it !.
+    if(exists("tweets")) {
+        tweets <- rbind(tweets, tweets_tmp)
+    } else {
+        tweets <- tweets_tmp
+    }
+  
+}
+
+# Export the results as CSV.
+write_as_csv(tweets, '30_day_tweets.csv')
+```
+
+#### Clean up and prepare the tweets
+
+```{r, eval=FALSE}
+# import your data set to analyse,
+# ensure it is in the same directory as your code, otherwise you need to add the path
+dataset_csv <- read.csv(file="30_day_tweets.csv")
+tweets.df <- dataset_csv['text']
+
+# convert text to lowercase
+tweets.df<-tolower(tweets.df)
+
+# get rid of problem characters
+tweets.df <- sapply(tweets.df,function(row) iconv(row, "latin1", "ASCII", sub=""))
+
+# remove punctuation, digits, special characters etc
+tweets.df = gsub("&amp", "", tweets.df)
+tweets.df= gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", tweets.df)
+tweets.df = gsub("@\\w+", "", tweets.df)
+tweets.df= gsub("[[:punct:]]", "", tweets.df)
+tweets.df = gsub("[[:digit:]]", "", tweets.df)
+tweets.df = gsub("http\\w+", "", tweets.df)
+tweets.df = gsub("[ \t]{2,}", "", tweets.df)
+tweets.df= gsub("^\\s+|\\s+$", "", tweets.df) 
+
+
+# get rid of unnecessary spaces
+tweets.df <- str_replace_all(tweets.df," "," ")
+
+# get rid of URLs
+#tweets.df <- str_replace_all(tweets.df, "http://t.co/[a-z,A-Z,0-9]*{8}","")
+
+# take out the retweet header (there is only one)
+tweets.df <- str_replace(tweets.df,"RT @[a-z,A-Z]*: ","")
+
+# get rid of hashtags
+tweets.df <- str_replace_all(tweets.df,"#[a-z,A-Z]*","")
+
+# get rid of references to other screen names
+tweets.df <- str_replace_all(tweets.df,"@[a-z,A-Z]*","") 
+```
+
+#### Prepare and generate the world cloud
+
+```{r, eval=FALSE}
+# Create a copy
+tweets2.df <- tweets.df
+
+# Remove frequent word so the world cloud is not distorted.
+tweets2.df= gsub("rta", "", tweets2.df) 
+tweets2.df= gsub("muslims", "", tweets2.df) 
+tweets2.df= gsub("muslim", "", tweets2.df) 
+
+# corpus will hold a collection of text documents
+tweet_corpus <- Corpus(VectorSource(tweets2.df)) 
+tweet_corpus
+inspect(tweet_corpus[1])
+
+# clean text
+tweet_clean <- tm_map(tweet_corpus, removePunctuation)
+tweet_clean <- tm_map(tweet_clean, removeWords, stopwords("english"))
+tweet_clean <- tm_map(tweet_clean, removeNumbers)
+tweet_clean <- tm_map(tweet_clean, stripWhitespace)
+wordcloud(tweet_clean, random.order=0.5,max.words=30, col=rainbow(50),min.freq = 20)
+
+```
+
+## TODO: Location Analysis
