@@ -30,11 +30,11 @@ load_libraries()
 ```{r}
 connect_to_twitter <- function(){
   # DON'T UPLOAD THE KEYS ON GITHUB, AS THIS IS A PUBLIC REPO
-  appname <- "XXX"
-  consumerKey<-	"XXX"
-  consumerSecret<-"XXX"
-  accessToken<-"XXX"
-  accessSecret<-"XXX"
+  appname <- ""
+  consumerKey<-	""
+  consumerSecret<-""
+  accessToken<-""
+  accessSecret<-""
 
   # authenticate with Twitter for twitteR
   setup_twitter_oauth (consumerKey, consumerSecret, accessToken, accessSecret)
@@ -446,3 +446,358 @@ wordcloud(tweet_clean, random.order=0.5,max.words=30, col=rainbow(50),min.freq =
 ```
 
 ## TODO: Location Analysis
+### Search Tweets based on top 10 cities in Europe
+For this part we will be using the RTWEET library to get tweets based on location. We narrowed down our scope to 10 main cities in Europe. Based on https://www.cntraveler.com/galleries/2014-11-04/top-10-cities-in-europe-readers-choice-awards-2014. First we search for tweets with keywords 'muslim' or 'islam' from all 10 different cities, then for each of these data frames, we add one column 'location_city' specifying its city for further analysis later on.
+```{r, eval=FALSE}
+## install rtweet from CRAN
+#install.packages("rtweet")
+#install.packages("base64enc")
+
+## load rtweet package
+library(rtweet)
+library(base64enc)
+
+connect_to_twitter()
+
+# viena, berlin, rome, london, dublin, edinburgh, paris, barcelona, amsterdam, manchester
+n <- 1000
+
+tweets_vienna <- search_tweets(
+  q = "muslim OR islam", lang="en", geocode = lookup_coords("vienna"), n
+)
+# adding location_city column
+tweets_vienna$location_city = c("vienna")
+
+tweets_berlin <- search_tweets(
+  q = "muslim OR islam", lang="en", geocode = lookup_coords("berlin"), n
+)
+# adding location_city column
+tweets_berlin$location_city = c("berlin")
+
+tweets_rome <- search_tweets(
+  q = "muslim OR islam", lang="en" , geocode = lookup_coords("rome"), n
+)
+# adding location_city column
+tweets_rome$location_city = c("rome")
+
+tweets_london <- search_tweets(
+  q = "muslim OR islam", lang="en" , geocode = lookup_coords("london"), n
+)
+# adding location_city column
+tweets_london$location_city = c("london")
+
+tweets_dublin <- search_tweets(
+  q = "muslim OR islam", lang="en" , geocode = lookup_coords("dublin"), n
+)
+# adding location_city column
+tweets_dublin$location_city = c("dublin")
+
+tweets_edinburgh <- search_tweets(
+  q = "muslim OR islam", lang="en", geocode = lookup_coords("edinburgh"), n
+)
+# adding location_city column
+tweets_edinburgh$location_city = c("edinburgh")
+
+tweets_paris <- search_tweets(
+  q = "muslim OR islam", lang="en", geocode = lookup_coords("paris"), n
+)
+# adding location_city column
+tweets_paris$location_city = c("paris")
+
+tweets_barcelona <- search_tweets(
+  q = "muslim OR islam", lang="en", geocode = lookup_coords("barcelona"), n
+)
+# adding location_city column
+tweets_barcelona$location_city = c("barcelona")
+
+tweets_amsterdam <- search_tweets(
+  q = "muslim OR islam", lang="en", geocode = lookup_coords("amsterdam"), n
+)
+# adding location_city column
+tweets_amsterdam$location_city = c("amsterdam")
+
+tweets_manchester <- search_tweets(
+  q = "muslim OR islam", lang="en", geocode = lookup_coords("manchester"), n
+)
+# adding location_city column
+tweets_manchester$location_city = c("manchester")
+
+all_location_tweets <- rbind(tweets_vienna, tweets_berlin, tweets_rome, tweets_london, tweets_dublin, tweets_edinburgh, tweets_paris, tweets_barcelona, tweets_amsterdam, tweets_manchester )
+# write out to a CSV file
+# write.csv(all_location_tweets, file="location_tweets.csv")
+save_as_csv(all_location_tweets, "location_tweets.csv", prepend_ids = TRUE, na = "",
+  fileEncoding = "UTF-8")
+
+```
+### Data Cleaning
+We will now clean the data above, and only select columns which we are interested.
+
+```{r, eval=FALSE}
+# https://bookdown.org/ndphillips/YaRrr/dataframe-column-names.html
+# clean_tweet_data("location_tweets.csv")
+dataset_csv <- read.csv(file="location_tweets.csv")
+tweets_text <- dataset_csv$text
+tweets_location <- dataset_csv$location_city
+
+# convert text to lowercase
+tweets_text<-tolower(tweets_text)
+# get rid of problem characters
+tweets_text <- sapply(tweets_text,function(row) iconv(row, "latin1", "ASCII", sub=""))
+# remove punctuation, digits, special characters etc
+tweets_text = gsub("&amp", "", tweets_text)
+tweets_text= gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", tweets_text)
+tweets_text = gsub("@\\w+", "", tweets_text)
+tweets_text= gsub("[[:punct:]]", "", tweets_text)
+tweets_text = gsub("[[:digit:]]", "", tweets_text)
+tweets_text = gsub("http\\w+", "", tweets_text)
+tweets_text = gsub("[ \t]{2,}", "", tweets_text)
+tweets_text= gsub("^\\s+|\\s+$", "", tweets_text) 
+# get rid of unnecessary spaces
+tweets_text <- str_replace_all(tweets_text," "," ")
+# get rid of URLs
+#tweets.df <- str_replace_all(tweets.df, "http://t.co/[a-z,A-Z,0-9]*{8}","")
+# take out the retweet header (there is only one)
+tweets_text <- str_replace(tweets_text,"RT @[a-z,A-Z]*: ","")
+# get rid of hashtags
+tweets_text <- str_replace_all(tweets_text,"#[a-z,A-Z]*","")
+# get rid of references to other screen names
+tweets_text <- str_replace_all(tweets_text,"@[a-z,A-Z]*","")
+
+#select columns we want only
+lean <- data.frame("text" = tweets_text, "location" = tweets_location)
+write.csv(lean, file='location_tweets_clean.csv')
+```
+## Location Analysis
+```{r, eval=FALSE}
+location_tweets <- read.csv("location_tweets_clean.csv")
+
+
+# viena, berlin, rome, london, dublin, edinburgh, paris, barcelona, amsterdam, manchester
+vienna_tweets = location_tweets[location_tweets$location == 'vienna',]$text
+berlin_tweets = location_tweets[location_tweets$location == 'berlin',]$text
+rome_tweets = location_tweets[location_tweets$location == 'rome',]$text
+london_tweets = location_tweets[location_tweets$location == 'london',]$text
+dublin_tweets = location_tweets[location_tweets$location == 'dublin',]$text
+edinburgh_tweets = location_tweets[location_tweets$location == 'edinburgh',]$text
+paris_tweets = location_tweets[location_tweets$location == 'paris',]$text
+barcelona_tweets = location_tweets[location_tweets$location == 'barcelona',]$text
+amsterdam_tweets = location_tweets[location_tweets$location == 'amsterdam',]$text
+manchester_tweets = location_tweets[location_tweets$location == 'manchester',]$text
+
+
+# Reading the Lexicon positive and negative words
+pos <- readLines("positive_words.txt")
+neg <- readLines("negative_words.txt")
+
+#function to calculate sentiment score
+score.sentiment <- function(sentences, pos.words, neg.words, .progress='none')
+{
+  # Parameters
+  # sentences: vector of text to score
+  # pos.words: vector of words of postive sentiment
+  # neg.words: vector of words of negative sentiment
+  # .progress: passed to laply() to control of progress bar
+
+  # create simple array of scores with laply
+  scores <- laply(sentences,
+                  function(sentence, pos.words, neg.words)
+                  {
+                    # remove punctuation
+                    sentence <- gsub("[[:punct:]]", "", sentence)
+                    # remove control characters
+                    sentence <- gsub("[[:cntrl:]]", "", sentence)
+                    # remove digits
+                    sentence <- gsub('\\d+', '', sentence)
+
+                    #convert to lower
+                    sentence <- tolower(sentence)
+
+
+                    # split sentence into words with str_split (stringr package)
+                    word.list <- str_split(sentence, "\\s+")
+                    words <- unlist(word.list)
+
+                    # compare words to the dictionaries of positive & negative terms
+                    pos.matches <- match(words, pos)
+                    neg.matches <- match(words, neg)
+
+                    # get the position of the matched term or NA
+                    # we just want a TRUE/FALSE
+                    pos.matches <- !is.na(pos.matches)
+                    neg.matches <- !is.na(neg.matches)
+
+                    # final score
+                    score <- sum(pos.matches) - sum(neg.matches)
+                    return(score)
+                  }, pos.words, neg.words, .progress=.progress )
+  # data frame with scores for each sentence
+  scores.df <- data.frame(text=sentences, score=scores)
+  return(scores.df)
+}
+# 
+#sentiment scores
+# viena, berlin, rome, london, dublin, edinburgh, paris, barcelona, amsterdam, manchester
+scores_vienna <- score.sentiment(vienna_tweets, pos.txt, neg.txt, .progress='text')
+scores_berlin <- score.sentiment(berlin_tweets, pos.txt, neg.txt, .progress='text')
+scores_rome <- score.sentiment(rome_tweets, pos.txt, neg.txt, .progress='text')
+scores_london <- score.sentiment(london_tweets, pos.txt, neg.txt, .progress='text')
+scores_dublin <- score.sentiment(dublin_tweets, pos.txt, neg.txt, .progress='text')
+scores_edinburgh <- score.sentiment(edinburgh_tweets, pos.txt, neg.txt, .progress='text')
+scores_paris <- score.sentiment(paris_tweets, pos.txt, neg.txt, .progress='text')
+scores_barcelona <- score.sentiment(barcelona_tweets, pos.txt, neg.txt, .progress='text')
+scores_amsterdam <- score.sentiment(amsterdam_tweets, pos.txt, neg.txt, .progress='text')
+scores_manchester <- score.sentiment(manchester_tweets, pos.txt, neg.txt, .progress='text')
+
+
+scores_vienna$score_chr <- ifelse(scores_vienna$score < 0,'Negative', ifelse(scores_vienna$score > 0, 'Positive', 'Neutral'))
+#Convert score_chr to factor for visualizations
+scores_vienna$score_chr <- as.factor(scores_vienna$score_chr)
+names(scores_vienna)[3]<-paste("Sentiment")
+
+scores_berlin$score_chr <- ifelse(scores_berlin$score < 0,'Negative', ifelse(scores_berlin$score > 0, 'Positive', 'Neutral'))
+#Convert score_chr to factor for visualizations
+scores_berlin$score_chr <- as.factor(scores_berlin$score_chr)
+names(scores_berlin)[3]<-paste("Sentiment")
+
+scores_rome$score_chr <- ifelse(scores_rome$score < 0,'Negative', ifelse(scores_rome$score > 0, 'Positive', 'Neutral'))
+#Convert score_chr to factor for visualizations
+scores_rome$score_chr <- as.factor(scores_rome$score_chr)
+names(scores_rome)[3]<-paste("Sentiment")
+
+scores_london$score_chr <- ifelse(scores_london$score < 0,'Negative', ifelse(scores_london$score > 0, 'Positive', 'Neutral'))
+#Convert score_chr to factor for visualizations
+scores_london$score_chr <- as.factor(scores_london$score_chr)
+names(scores_london)[3]<-paste("Sentiment")
+
+scores_dublin$score_chr <- ifelse(scores_dublin$score < 0,'Negative', ifelse(scores_dublin$score > 0, 'Positive', 'Neutral'))
+#Convert score_chr to factor for visualizations
+scores_dublin$score_chr <- as.factor(scores_dublin$score_chr)
+names(scores_dublin)[3]<-paste("Sentiment")
+
+scores_edinburgh$score_chr <- ifelse(scores_edinburgh$score < 0,'Negative', ifelse(scores_edinburgh$score > 0, 'Positive', 'Neutral'))
+#Convert score_chr to factor for visualizations
+scores_edinburgh$score_chr <- as.factor(scores_edinburgh$score_chr)
+names(scores_edinburgh)[3]<-paste("Sentiment")
+
+scores_paris$score_chr <- ifelse(scores_paris$score < 0,'Negative', ifelse(scores_paris$score > 0, 'Positive', 'Neutral'))
+#Convert score_chr to factor for visualizations
+scores_paris$score_chr <- as.factor(scores_paris$score_chr)
+names(scores_paris)[3]<-paste("Sentiment")
+
+scores_barcelona$score_chr <- ifelse(scores_barcelona$score < 0,'Negative', ifelse(scores_barcelona$score > 0, 'Positive', 'Neutral'))
+#Convert score_chr to factor for visualizations
+scores_barcelona$score_chr <- as.factor(scores_barcelona$score_chr)
+names(scores_barcelona)[3]<-paste("Sentiment")
+
+scores_amsterdam$score_chr <- ifelse(scores_amsterdam$score < 0,'Negative', ifelse(scores_amsterdam$score > 0, 'Positive', 'Neutral'))
+#Convert score_chr to factor for visualizations
+scores_amsterdam$score_chr <- as.factor(scores_amsterdam$score_chr)
+names(scores_amsterdam)[3]<-paste("Sentiment")
+
+scores_manchester$score_chr <- ifelse(scores_manchester$score < 0,'Negative', ifelse(scores_manchester$score > 0, 'Positive', 'Neutral'))
+#Convert score_chr to factor for visualizations
+scores_manchester$score_chr <- as.factor(scores_manchester$score_chr)
+names(scores_manchester)[3]<-paste("Sentiment")
+```
+## Visualisation
+```{r eval=FALSE}
+text_size <- 12
+axis_text_size<- 10
+
+#plot to show number of negative, positive and neutral comments
+Viz_vienna <- ggplot(scores_vienna, aes(x=Sentiment, fill=Sentiment))+ geom_bar(aes(y = (..count..)/sum(..count..))) +
+  scale_y_continuous(labels = percent)+labs(y="Score")+labs(x="Vienna")+
+  theme(text =element_text(size=text_size))+theme(axis.text.x = element_blank())+ theme(legend.position="none")+ coord_cartesian(ylim=c(0,0.6)) + scale_fill_manual(values=c("firebrick1", "grey50", "limeGREEN"))
+
+Viz_berlin <- ggplot(scores_berlin, aes(x=Sentiment, fill=Sentiment))+ geom_bar(aes(y = (..count..)/sum(..count..))) +
+  scale_y_continuous(labels = percent)+labs(y=element_blank())+labs(x="Berlin")+
+  theme(text =element_text(size=text_size))+theme(axis.text = element_blank())+ theme(legend.position="none")+ coord_cartesian(ylim=c(0,0.6)) + scale_fill_manual(values=c("firebrick1", "grey50", "limeGREEN"))
+
+Viz_rome <- ggplot(scores_rome, aes(x=Sentiment, fill=Sentiment))+ geom_bar(aes(y = (..count..)/sum(..count..))) +
+  scale_y_continuous(labels = percent)+labs(y=element_blank())+labs(x="Rome")+
+  theme(text =element_text(size=text_size))+theme(axis.text = element_blank())+ theme(legend.position="none")+ coord_cartesian(ylim=c(0,0.6)) + scale_fill_manual(values=c("firebrick1", "grey50", "limeGREEN"))
+
+Viz_london <- ggplot(scores_london, aes(x=Sentiment, fill=Sentiment))+ geom_bar(aes(y = (..count..)/sum(..count..))) +
+  scale_y_continuous(labels = percent)+labs(y=element_blank())+labs(x="London")+
+  theme(text =element_text(size=text_size))+theme(axis.text = element_blank())+ theme(legend.position="none")+ coord_cartesian(ylim=c(0,0.6)) + scale_fill_manual(values=c("firebrick1", "grey50", "limeGREEN"))
+
+Viz_dublin <- ggplot(scores_dublin, aes(x=Sentiment, fill=Sentiment))+ geom_bar(aes(y = (..count..)/sum(..count..))) +
+  scale_y_continuous(labels = percent)+labs(y=element_blank())+labs(x="Dublin")+
+  theme(text =element_text(size=text_size))+theme(axis.text = element_blank())+ theme(legend.position="none")+ coord_cartesian(ylim=c(0,0.6)) + scale_fill_manual(values=c("firebrick1", "grey50", "limeGREEN"))
+
+Viz_edinburgh <- ggplot(scores_edinburgh, aes(x=Sentiment, fill=Sentiment))+ geom_bar(aes(y = (..count..)/sum(..count..))) +
+  scale_y_continuous(labels = percent)+labs(y="Score")+labs(x="Edinburgh")+
+  theme(text =element_text(size=text_size))+theme(axis.text.x = element_blank())+ theme(legend.position="none")+ coord_cartesian(ylim=c(0,0.6)) + scale_fill_manual(values=c("firebrick1", "grey50", "limeGREEN"))
+ 
+Viz_paris <- ggplot(scores_paris, aes(x=Sentiment, fill=Sentiment))+ geom_bar(aes(y = (..count..)/sum(..count..))) +
+  scale_y_continuous(labels = percent)+labs(y=element_blank())+labs(x="Paris")+
+  theme(text =element_text(size=text_size))+theme(axis.text = element_blank())+ theme(legend.position="none")+ coord_cartesian(ylim=c(0,0.6)) + scale_fill_manual(values=c("firebrick1", "grey50", "limeGREEN"))
+
+Viz_barcelona <- ggplot(scores_barcelona, aes(x=Sentiment, fill=Sentiment))+ geom_bar(aes(y = (..count..)/sum(..count..))) +
+  scale_y_continuous(labels = percent)+labs(y=element_blank())+labs(x="Barcelona")+
+  theme(text =element_text(size=text_size))+theme(axis.text = element_blank())+ theme(legend.position="none")+ coord_cartesian(ylim=c(0,0.6)) + scale_fill_manual(values=c("firebrick1", "grey50", "limeGREEN"))
+
+Viz_amsterdam <- ggplot(scores_amsterdam, aes(x=Sentiment, fill=Sentiment))+ geom_bar(aes(y = (..count..)/sum(..count..))) +
+  scale_y_continuous(labels = percent)+labs(y=element_blank())+labs(x="Amsterdam")+
+  theme(text =element_text(size=text_size))+theme(axis.text = element_blank())+ theme(legend.position="none")+ coord_cartesian(ylim=c(0,0.6)) + scale_fill_manual(values=c("firebrick1", "grey50", "limeGREEN"))
+
+Viz_manchester <- ggplot(scores_manchester, aes(x=Sentiment, fill=Sentiment))+ geom_bar(aes(y = (..count..)/sum(..count..))) +
+  scale_y_continuous(labels = percent)+labs(y=element_blank())+labs(x="Manchester")+
+  theme(text =element_text(size=text_size))+theme(axis.text = element_blank())+ theme(legend.position="none")+ coord_cartesian(ylim=c(0,0.6)) + scale_fill_manual(values=c("firebrick1", "grey50", "limeGREEN"))
+
+```
+##Multiplot
+```{r eval=FALSE}
+library(ggplot2)
+# install.packages("gridExtra")
+# install.packages("ggpubr")
+library(gridExtra)
+library(ggpubr)
+
+
+ggarrange(Viz_vienna + theme(legend.position="none"),
+          Viz_berlin + theme(legend.position="none"),
+          Viz_rome + theme(legend.position="none"),
+          Viz_london + theme(legend.position="none"),
+          Viz_dublin + theme(legend.position="none"),
+          Viz_edinburgh + theme(legend.position="none"),
+          Viz_paris + theme(legend.position="none"),
+          Viz_barcelona + theme(legend.position="none"),
+          Viz_amsterdam + theme(legend.position="none"),
+          Viz_manchester + theme(legend.position="none"),
+          common.legend = TRUE,
+          ncol = 5, nrow = 2)
+```
+
+## Create Map
+
+```{r eval=FALSE}
+# install.packages("maps")
+library(maps)
+dataset_csv <- read.csv(file="location_tweets.csv")
+# names(dataset_csv)
+map_dataset<- dataset_csv[c('text','geo_coords')]
+map_dataset
+
+# europe = data(europeMapEnv)
+
+# ## create lat/lng variables using all available tweet and profile geo-location data
+# rt <- lat_lng(dataset_csv)
+# 
+# # ## plot state boundaries
+# par(mar = c(0, 0, 0, 0))
+# maps::map('europe', lwd = .25)
+# # 
+# # ## plot lat and lng points onto state map
+# with(rt, points(lng, lat, pch = 20, cex = .75, col = rgb(0, .3, .7, .75)))
+
+```
+
+
+
+
+
+
+
+
+
