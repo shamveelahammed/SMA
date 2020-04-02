@@ -795,6 +795,56 @@ map_dataset
 
 
 
+## Islamophobia over the years
+### Search Tweets on the year and based on random periods througout the year.
+
+```{r,eval=FALSE}
+
+
+get_tweets_by_year <- function(year , keyword) {
+
+  library(anytime)
+  
+  year_time_stamp <- paste(year,"-01-01 00:00:01 EST", sep = "")
+  year_unix <- c(as.numeric(as.POSIXct(year_time_stamp)))
+  
+  for(i in 1:5) {
+    t_rnd = sample(1:(92*24*60*60), 1)
+    toDate <- format(anytime(year_unix + t_rnd), "%Y%m%d%H%M")
+    
+    # "lang:en muslims"
+    tweets_tmp <- search_fullarchive(keyword,n = 50, env_name = "dev", toDate = toDate, parse=TRUE)
+    
+    # Append to the list 'tweets' if not there, create it !.
+    if(exists("tweets")) {
+        tweets <- rbind(tweets, tweets_tmp)
+    } else {
+        tweets <- tweets_tmp
+    }
+    
+    
+  }
+  
+  file_name <- paste(year,"-tweets.csv", sep = "")
+  write_as_csv(tweets, file_name)
+  
+  return(tweets)
+
+}
+
+tweet_year <- get_tweets_by_year(2019 , "lang:en muslims")
+
+# using the function to calculate sentiment score for the year
+scores_year <- score.sentiment(tweet_year, pos.txt, neg.txt, .progress='text')
+
+# the value is recorded for the given year.
+View(scores_year)
+
+#Summary of the sentiment scores
+summary(scores_year)
+
+```
+
 
 
 
