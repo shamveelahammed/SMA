@@ -809,7 +809,7 @@ get_tweets_by_year <- function(year , keyword) {
   year_unix <- c(as.numeric(as.POSIXct(year_time_stamp)))
   
   for(i in 1:5) {
-    t_rnd = sample(1:(92*24*60*60), 1)
+    t_rnd = sample(1:(364*24*60*60), 1)
     toDate <- format(anytime(year_unix + t_rnd), "%Y%m%d%H%M")
     
     # "lang:en muslims"
