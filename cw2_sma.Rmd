@@ -4,6 +4,25 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## R Markdown for CW2 SOCIAL MEDIA ANALYSIS on ISLAMOPHOBIA
 
+## Function to  install and load all required libraries
+```{r}
+load_required_libraries <- function(pkg){
+   for( i in pkg ){
+    #  require returns TRUE invisibly if it was able to load package
+    if( ! require( i , character.only = TRUE ) ){
+      #  If package was not able to be loaded then re-install
+      install.packages( i , dependencies = TRUE )
+      #  Load package after installing
+      require( i , character.only = TRUE )
+    }
+  }
+}
+load_required_libraries(c("twitteR" , "rtweet" , "ROAuth", "syuzhet", "plotly", "tm", "wordcloud","textmineR","topicmodels","plyr","stringr","ggplot2","scales","base64enc","gridExtra","ggpubr","maps","anytime"  ))
+```
+
+
+
+## If all libraries are already installed
 ## Load all required libraries
 ```{r}
 load_libraries <- function(){
@@ -13,13 +32,20 @@ load_libraries <- function(){
   library(syuzhet)
   library(plotly)
   library(tm)
-  library(wordcloud)~
+  library(wordcloud)
   library(textmineR)
   library(topicmodels)
   library(plyr)
   library(stringr)
   library(ggplot2)
   library(scales)
+  library(rtweet)
+  library(base64enc)
+  library(gridExtra)
+  library(ggpubr)
+  library(maps)
+  library(anytime)
+
 }
 load_libraries()
 ```
@@ -35,7 +61,6 @@ connect_to_twitter <- function(){
   consumerSecret<-""
   accessToken<-""
   accessSecret<-""
-
   # authenticate with Twitter for twitteR
   setup_twitter_oauth (consumerKey, consumerSecret, accessToken, accessSecret)
   
@@ -57,25 +82,25 @@ connect_to_twitter()
 
 
 # search for tweets by keyword "MUSLIM"
-tweets<-searchTwitter("muslim", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+tweets<-searchTwitter("muslim", n=1000, lang="en", since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
                                 resultType=NULL, retryOnRateLimit=120)
 tweets_muslim<-twListToDF(tweets) # put tweets in a data frame
 
 
 # search for tweets by keyword "ISLAM"
-tweets<-searchTwitter("islam", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+tweets<-searchTwitter("islam", n=1000, lang="en", since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
                                 resultType=NULL, retryOnRateLimit=120)
 tweets_islam<-twListToDF(tweets)
 
 
 # search for tweets by keyword "Arab"
-tweets<-searchTwitter("arab", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+tweets<-searchTwitter("arab", n=1000, lang="en", since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
                                 resultType=NULL, retryOnRateLimit=120)
 tweets_arab<-twListToDF(tweets)
 
 
 # search for tweets by keyword "Muhammad"
-tweets<-searchTwitter("muhammad", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+tweets<-searchTwitter("muhammad", n=1000, lang="en", since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
                                 resultType=NULL, retryOnRateLimit=120)
 tweets_muhammad<-twListToDF(tweets)
 
@@ -92,22 +117,22 @@ write.csv(all_muslim_tweets, file="muslim_tweets.csv")
 connect_to_twitter()
 
 # search for tweets by keyword
-tweets<-searchTwitter("christian", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+tweets<-searchTwitter("christian", n=1000, lang="en", since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
                                 resultType=NULL, retryOnRateLimit=120)
 # put tweets in a data frame
 tweets_christian<-twListToDF(tweets)
 
-tweets<-searchTwitter("christ", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+tweets<-searchTwitter("christ", n=1000, lang="en", since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
                                 resultType=NULL, retryOnRateLimit=120)
 # put tweets in a data frame
 tweets_christ<-twListToDF(tweets)
 
-tweets<-searchTwitter("catholic", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+tweets<-searchTwitter("catholic", n=1000, lang="en", since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
                                 resultType=NULL, retryOnRateLimit=120)
 # put tweets in a data frame
 tweets_catholic<-twListToDF(tweets)
 
-tweets<-searchTwitter("church", n=1000, lang=NULL, since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
+tweets<-searchTwitter("church", n=1000, lang="en", since=NULL, until=NULL, locale=NULL, geocode=NULL, sinceID=NULL, maxID=NULL,
                                 resultType=NULL, retryOnRateLimit=120)
 # put tweets in a data frame
 tweets_church<-twListToDF(tweets)
@@ -217,18 +242,35 @@ ggplot(data=Sentimentscores_christian,aes(x=sentiment,y=Score))+geom_bar(aes(fil
 
 ## Emotion Plot
 ```{r}
-emotions <- get_nrc_sentiment(clean_christian_tweets)
-emo_bar = colSums(emotions)
-emo_sum = data.frame(count=emo_bar, emotion=names(emo_bar))
-emo_sum$emotion = factor(emo_sum$emotion, levels=emo_sum$emotion[order(emo_sum$count, decreasing = TRUE)])
+# Muslim Tweets
+emotions_muslim <- get_nrc_sentiment(muslim_text)
+emo_bar_muslim = colSums(emotions_muslim)
+emo_sum_muslim = data.frame(count=emo_bar_muslim, emotion=names(emo_bar_muslim))
+emo_sum_muslim$emotion = factor(emo_sum_muslim$emotion, levels=emo_sum_muslim$emotion[order(emo_sum_muslim$count, decreasing = TRUE)])
 
-emo_sum <- emo_sum[1:8,]
-emo_sum$percent<-(emo_sum$count/sum(emo_sum$count))*100
-  
-   #Visualize the emotions from NRC sentiments
-plot_ly(emo_sum, x=~emotion, y=~percent, type="bar", color=~emotion) %>%
+# TODO: Decide whether to include postive and negative emotions
+# emo_sum_muslim <- emo_sum_muslim[1:8,]
+emo_sum_muslim$percent<-(emo_sum_muslim$count/sum(emo_sum_muslim$count))*100
+
+#Visualize the emotions from NRC sentiments
+plot_ly(emo_sum_muslim, x=~emotion, y=~percent, type="bar", color=~emotion) %>%
 layout(xaxis=list(title=""),  yaxis = list(title = "Emotion count"),
-showlegend=FALSE,title="Distribution of emotion categories") %>%
+showlegend=FALSE,title="Distribution of emotion categories on Muslim Tweets") %>%
+layout(yaxis = list(ticksuffix = "%"))
+
+# # Chritian Tweets
+emotions_christian <- get_nrc_sentiment(christian_text)
+emo_bar_christian = colSums(emotions_christian)
+emo_sum_christian = data.frame(count=emo_bar_christian, emotion=names(emo_bar_christian))
+emo_sum_christian$emotion = factor(emo_sum_christian$emotion, levels=emo_sum_christian$emotion[order(emo_sum_christian$count, decreasing = TRUE)])
+
+# emo_sum <- emo_sum[1:8,]
+emo_sum_christian$percent<-(emo_sum_christian$count/sum(emo_sum_christian$count))*100
+
+#Visualize the emotions from NRC sentiments
+plot_ly(emo_sum_christian, x=~emotion, y=~percent, type="bar", color=~emotion) %>%
+layout(xaxis=list(title=""),  yaxis = list(title = "Emotion count"),
+showlegend=FALSE,title="Distribution of emotion categories on Christian Tweets") %>%
 layout(yaxis = list(ticksuffix = "%"))
 ```
 
@@ -441,6 +483,7 @@ tweet_clean <- tm_map(tweet_corpus, removePunctuation)
 tweet_clean <- tm_map(tweet_clean, removeWords, stopwords("english"))
 tweet_clean <- tm_map(tweet_clean, removeNumbers)
 tweet_clean <- tm_map(tweet_clean, stripWhitespace)
+# TODO: Fix an error with Wordcloud generation
 wordcloud(tweet_clean, random.order=0.5,max.words=30, col=rainbow(50),min.freq = 20)
 
 ```
@@ -498,6 +541,7 @@ tweets_edinburgh <- search_tweets(
 # adding location_city column
 tweets_edinburgh$location_city = c("edinburgh")
 
+### TODO: Paris doesn't have any tweets and fails
 tweets_paris <- search_tweets(
   q = "muslim OR islam", lang="en", geocode = lookup_coords("paris"), n
 )
@@ -832,6 +876,7 @@ get_tweets_by_year <- function(year , keyword) {
 
 }
 
+#TODO: Fix an error with the function
 tweet_year <- get_tweets_by_year(2019 , "lang:en muslims")
 
 # using the function to calculate sentiment score for the year
