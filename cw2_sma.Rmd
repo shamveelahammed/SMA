@@ -263,11 +263,10 @@ emo_sum_muslim$emotion = factor(emo_sum_muslim$emotion, levels=emo_sum_muslim$em
 emo_sum_muslim <- emo_sum_muslim[1:8,]
 emo_sum_muslim$percent<-(emo_sum_muslim$count/sum(emo_sum_muslim$count))*100
 
-#Visualize the emotions from NRC sentiments
-Viz_ed_muslim<- plot_ly(emo_sum_muslim, x=~emotion, y=~percent, type="bar", color=~emotion) %>%
-layout(xaxis=list(title=""),  yaxis = list(title = "Emotion count"),
-showlegend=FALSE,title="Distribution of emotion categories on  Muslim Tweets") %>%
-layout(yaxis = list(ticksuffix = "%"))
+
+
+Viz_ed_muslim<- ggplot(data=emo_sum_muslim,aes(x=emotion,y=percent))+geom_bar(aes(fill=emotion),stat = "identity")+
+   theme(legend.position="none")+ylab("scores(%)")+ggtitle("Distribution of emotion categories on  Muslim Tweets")
 
 # # Chritian Tweets
 emotions_christian <- get_nrc_sentiment(christian_text)
@@ -278,13 +277,30 @@ emo_sum_christian$emotion = factor(emo_sum_christian$emotion, levels=emo_sum_chr
 emo_sum_christian <- emo_sum_christian[1:8,]
 emo_sum_christian$percent<-(emo_sum_christian$count/sum(emo_sum_christian$count))*100
 
+## Display graphs with plotly
 #Visualize the emotions from NRC sentiments
-Viz_ed_christian<-plot_ly(emo_sum_christian, x=~emotion, y=~percent, type="bar", color=~emotion) %>%
-layout(xaxis=list(title=""),  yaxis = list(title = "Emotion count"),
-showlegend=FALSE,title="Distribution of emotion categories on Christian Tweets") %>%
-layout(yaxis = list(ticksuffix = "%"))
+# plot_ly(emo_sum_muslim, x=~emotion, y=~percent, type="bar", color=~emotion) %>%
+# layout(xaxis=list(title=""),  yaxis = list(title = "Emotion count"),
+# showlegend=FALSE,title="Distribution of emotion categories on  Muslim Tweets") %>%
+# layout(yaxis = list(ticksuffix = "%"))
 
-subplot(Viz_ed_muslim, Viz_ed_christian, showlegend = FALSE))
+#Visualize the emotions from NRC sentiments
+# plot_ly(emo_sum_christian, x=~emotion, y=~percent, type="bar", color=~emotion) %>%
+# layout(xaxis=list(title=""),  yaxis = list(title = "Emotion count"),
+# showlegend=FALSE,title="Distribution of emotion categories on Christian Tweets") %>%
+# layout(yaxis = list(ticksuffix = "%"))
+
+# subplot(Viz_ed_muslim, Viz_ed_christian, showlegend = FALSE)
+
+
+Viz_ed_christian<- ggplot(data=emo_sum_christian,aes(x=emotion,y=percent))+geom_bar(aes(fill=emotion),stat = "identity")+
+   theme(legend.position="none")+ ylab("scores(%)")+ggtitle("Distribution of emotion categories on Christian Tweets")
+
+
+ggarrange( Viz_ed_christian  + theme(legend.position="none"),
+          Viz_ed_muslim + theme(legend.position="none"),
+          common.legend = TRUE,
+          ncol = 1, nrow = 2)
 ```
 
 
