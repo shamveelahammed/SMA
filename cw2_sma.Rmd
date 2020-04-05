@@ -198,8 +198,8 @@ christian_corpus <- Corpus(VectorSource(tweet_df_christian$x))
 christian_corpus <- tm_map(christian_corpus, function(x)removeWords(x,stopwords()))
 
 # generate wordcloud
-wordcloud(muslim_corpus,min.freq = 10,colors=brewer.pal(8, "Dark2"),random.color = TRUE,max.words = 500)
-wordcloud(christian_corpus,min.freq = 10,colors=brewer.pal(8, "Dark2"),random.color = TRUE,max.words = 500)
+wordcloud(muslim_corpus,min.freq = 10,scale=c(3,.5),random.order=TRUE,colors=brewer.pal(6, "Dark2"),random.color = TRUE,max.words = 20)
+wordcloud(christian_corpus,min.freq = 10,colors=brewer.pal(6, "Dark2"),scale=c(3,.5),random.order=TRUE,random.color = TRUE,max.words = 20)
 ```
 
 
@@ -213,32 +213,43 @@ sentiment_muslim<-get_nrc_sentiment((muslim_text))
 #calculationg total score for each sentiment
 Sentimentscores_muslim<-data.frame(colSums(sentiment_muslim[,]))
 
+
 names(Sentimentscores_muslim)<-"Score"
 Sentimentscores_muslim<-cbind("sentiment"=rownames(Sentimentscores_muslim),Sentimentscores_muslim)
 rownames(Sentimentscores_muslim)<-NULL
 
-ggplot(data=Sentimentscores_muslim,aes(x=sentiment,y=Score))+geom_bar(aes(fill=sentiment),stat = "identity")+
+Sentimentscores_muslim <- Sentimentscores_muslim[c(1:8),]
+
+Viz_sa_muslim <- ggplot(data=Sentimentscores_muslim,aes(x=sentiment,y=Score))+geom_bar(aes(fill=sentiment),stat = "identity")+
   theme(legend.position="none")+
   xlab("Sentiments")+ylab("scores")+ggtitle("Sentiments of people behind the tweets on Muslim")
 
 
+ tweet_df_christian$x <- as.character(tweet_df_christian$x)
+ christian_text<- tweet_df_christian$x
+ #getting emotions using in-built function
+ sentiment_christian<-get_nrc_sentiment((christian_text))
 
-tweet_df_christian$x <- as.character(tweet_df_christian$x) 
-christian_text<- tweet_df_christian$x
-#getting emotions using in-built function
-sentiment_christian<-get_nrc_sentiment((christian_text))
+ #calculationg total score for each sentiment
+ Sentimentscores_christian<-data.frame(colSums(sentiment_christian[,]))
 
-#calculationg total score for each sentiment
-Sentimentscores_christian<-data.frame(colSums(sentiment_christian[,]))
+ names(Sentimentscores_christian)<-"Score"
+ Sentimentscores_christian<-cbind("sentiment"=rownames(Sentimentscores_christian),Sentimentscores_christian)
+ rownames(Sentimentscores_christian)<-NULL
 
-names(Sentimentscores_christian)<-"Score"
-Sentimentscores_christian<-cbind("sentiment"=rownames(Sentimentscores_christian),Sentimentscores_christian)
-rownames(Sentimentscores_christian)<-NULL
-
-ggplot(data=Sentimentscores_christian,aes(x=sentiment,y=Score))+geom_bar(aes(fill=sentiment),stat = "identity")+
-  theme(legend.position="none")+
-  xlab("Sentiments")+ylab("scores")+ggtitle("Sentiments of people behind the tweets on Christian")
+ Sentimentscores_christian <- Sentimentscores_christian[c(1:8),]
+ 
+ Viz_sa_christian <- ggplot(data=Sentimentscores_christian,aes(x=sentiment,y=Score))+geom_bar(aes(fill=sentiment),stat = "identity")+
+   theme(legend.position="none")+
+   xlab("Sentiments")+ylab("scores")+ggtitle("Sentiments of people behind the tweets on Christian")
+ 
+ 
+ ggarrange( Viz_sa_christian  + theme(legend.position="none"),
+          Viz_sa_muslim + theme(legend.position="none"),
+          common.legend = TRUE,
+          ncol = 1, nrow = 2)
 ```
+
 
 ## Emotion Plot
 ```{r}
@@ -248,14 +259,14 @@ emo_bar_muslim = colSums(emotions_muslim)
 emo_sum_muslim = data.frame(count=emo_bar_muslim, emotion=names(emo_bar_muslim))
 emo_sum_muslim$emotion = factor(emo_sum_muslim$emotion, levels=emo_sum_muslim$emotion[order(emo_sum_muslim$count, decreasing = TRUE)])
 
-# TODO: Decide whether to include postive and negative emotions
-# emo_sum_muslim <- emo_sum_muslim[1:8,]
+
+emo_sum_muslim <- emo_sum_muslim[1:8,]
 emo_sum_muslim$percent<-(emo_sum_muslim$count/sum(emo_sum_muslim$count))*100
 
 #Visualize the emotions from NRC sentiments
-plot_ly(emo_sum_muslim, x=~emotion, y=~percent, type="bar", color=~emotion) %>%
+Viz_ed_muslim<- plot_ly(emo_sum_muslim, x=~emotion, y=~percent, type="bar", color=~emotion) %>%
 layout(xaxis=list(title=""),  yaxis = list(title = "Emotion count"),
-showlegend=FALSE,title="Distribution of emotion categories on Muslim Tweets") %>%
+showlegend=FALSE,title="Distribution of emotion categories on  Muslim Tweets") %>%
 layout(yaxis = list(ticksuffix = "%"))
 
 # # Chritian Tweets
@@ -264,14 +275,16 @@ emo_bar_christian = colSums(emotions_christian)
 emo_sum_christian = data.frame(count=emo_bar_christian, emotion=names(emo_bar_christian))
 emo_sum_christian$emotion = factor(emo_sum_christian$emotion, levels=emo_sum_christian$emotion[order(emo_sum_christian$count, decreasing = TRUE)])
 
-# emo_sum <- emo_sum[1:8,]
+emo_sum_christian <- emo_sum_christian[1:8,]
 emo_sum_christian$percent<-(emo_sum_christian$count/sum(emo_sum_christian$count))*100
 
 #Visualize the emotions from NRC sentiments
-plot_ly(emo_sum_christian, x=~emotion, y=~percent, type="bar", color=~emotion) %>%
+Viz_ed_christian<-plot_ly(emo_sum_christian, x=~emotion, y=~percent, type="bar", color=~emotion) %>%
 layout(xaxis=list(title=""),  yaxis = list(title = "Emotion count"),
 showlegend=FALSE,title="Distribution of emotion categories on Christian Tweets") %>%
 layout(yaxis = list(ticksuffix = "%"))
+
+subplot(Viz_ed_muslim, Viz_ed_christian, showlegend = FALSE))
 ```
 
 
@@ -319,8 +332,8 @@ tweets <- read.csv("muslim_tweets.csv")
 clean_tweets.df = tweets$text
 
 #Reading the Lexicon positive and negative words
-pos <- readLines("positive_words.txt")
-neg <- readLines("negative_words.txt")
+pos <- readLines("input/positive_words.txt")
+neg <- readLines("input/negative_words.txt")
 
 #function to calculate sentiment score
 score.sentiment <- function(sentences, pos.words, neg.words, .progress='none')
@@ -630,8 +643,8 @@ manchester_tweets = location_tweets[location_tweets$location == 'manchester',]$t
 
 
 # Reading the Lexicon positive and negative words
-pos <- readLines("positive_words.txt")
-neg <- readLines("negative_words.txt")
+pos <- readLines("input/positive_words.txt")
+neg <- readLines("input/negative_words.txt")
 
 #function to calculate sentiment score
 score.sentiment <- function(sentences, pos.words, neg.words, .progress='none')
