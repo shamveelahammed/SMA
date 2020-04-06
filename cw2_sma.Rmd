@@ -1,3 +1,8 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -19,7 +24,6 @@ load_required_libraries <- function(pkg){
 }
 load_required_libraries(c("twitteR" , "rtweet" , "ROAuth", "syuzhet", "plotly", "tm", "wordcloud","textmineR","topicmodels","plyr","stringr","ggplot2","scales","base64enc","gridExtra","ggpubr","maps","anytime"  ))
 ```
-
 
 
 ## If all libraries are already installed
@@ -115,7 +119,6 @@ write.csv(all_muslim_tweets, file="muslim_tweets.csv")
 ## Collect all Christian Tweets 
 Search for multiple CHristianity related keywords and bind the results together.
 ```{r}
-
 connect_to_twitter()
 
 # search for tweets by keyword
@@ -505,7 +508,7 @@ wordcloud(tweet_clean, random.order=0.5,max.words=30, col=rainbow(50),min.freq =
 
 ```
 
-## TODO: Location Analysis
+## Location Analysis
 ### Search Tweets based on top 10 cities in Europe
 For this part we will be using the RTWEET library to get tweets based on location. We narrowed down our scope to 10 main cities in Europe. Based on https://www.cntraveler.com/galleries/2014-11-04/top-10-cities-in-europe-readers-choice-awards-2014. First we search for tweets with keywords 'muslim' or 'islam' from all 10 different cities, then for each of these data frames, we add one column 'location_city' specifying its city for further analysis later on.
 ```{r, eval=FALSE}
@@ -630,6 +633,7 @@ write.csv(lean, file='location_tweets_clean.csv')
 ```
 
 ## Location Analysis
+Here we get positive, negative and neutral sentiment scores for each of the cities.
 ```{r, eval=FALSE}
 location_tweets <- read.csv("location_tweets_clean.csv")
 
@@ -762,6 +766,7 @@ scores_manchester$score_chr <- as.factor(scores_manchester$score_chr)
 names(scores_manchester)[3]<-paste("Sentiment")
 ```
 ## Visualisation
+We then plot the scores for all ten cities into one plot.
 ```{r eval=FALSE}
 text_size <- 12
 axis_text_size<- 10
@@ -831,32 +836,6 @@ ggarrange(Viz_vienna + theme(legend.position="none"),
           ncol = 5, nrow = 2)
 ```
 
-## Create Map
-
-```{r eval=FALSE}
-# install.packages("maps")
-library(maps)
-dataset_csv <- read.csv(file="location_tweets.csv")
-# names(dataset_csv)
-map_dataset<- dataset_csv[c('text','geo_coords')]
-map_dataset
-
-# europe = data(europeMapEnv)
-
-# ## create lat/lng variables using all available tweet and profile geo-location data
-# rt <- lat_lng(dataset_csv)
-# 
-# # ## plot state boundaries
-# par(mar = c(0, 0, 0, 0))
-# maps::map('europe', lwd = .25)
-# # 
-# # ## plot lat and lng points onto state map
-# with(rt, points(lng, lat, pch = 20, cex = .75, col = rgb(0, .3, .7, .75)))
-
-```
-
-
-
 ## Islamophobia over the years
 ### Search Tweets on the year and based on random periods througout the year.
 
@@ -907,8 +886,6 @@ View(scores_year)
 summary(scores_year)
 
 ```
-
-
 
 
 
