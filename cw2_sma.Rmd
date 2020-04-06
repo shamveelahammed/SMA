@@ -76,7 +76,8 @@ connect_to_twitter <- function(){
 ```
 
 
-## Collect all Muslim Tweets 
+## Collect all Muslim Tweets
+Search for multiple Islam related keywords and bind the results together.
 ```{r, eval=FALSE}
 connect_to_twitter()
 
@@ -112,6 +113,7 @@ write.csv(all_muslim_tweets, file="muslim_tweets.csv")
 ```
 
 ## Collect all Christian Tweets 
+Search for multiple CHristianity related keywords and bind the results together.
 ```{r}
 
 connect_to_twitter()
@@ -204,6 +206,7 @@ wordcloud(christian_corpus,min.freq = 10,colors=brewer.pal(6, "Dark2"),scale=c(3
 
 
 ## Sentiment Analysis
+This code will perform the sentiment analysis comparison of Islam tweets and Christian tweet, by using the get_nrc_sentiment function to do so. This bit also uses the dataframes read from the CSV files in the word cload section.
 ```{r}
 tweet_df_muslim$x <- as.character(tweet_df_muslim$x)
 muslim_text<- tweet_df_muslim$x
@@ -252,6 +255,7 @@ Viz_sa_muslim <- ggplot(data=Sentimentscores_muslim,aes(x=sentiment,y=Score))+ge
 
 
 ## Emotion Plot
+This section will perform the emotion plot coparison of Islam tweets and Christian tweets. It extract the emotion information from the results of the get_nrc_sentiment function. This bit also uses the dataframes read from the CSV files in the word cload section.
 ```{r}
 # Muslim Tweets
 emotions_muslim <- get_nrc_sentiment(muslim_text)
@@ -262,7 +266,6 @@ emo_sum_muslim$emotion = factor(emo_sum_muslim$emotion, levels=emo_sum_muslim$em
 
 emo_sum_muslim <- emo_sum_muslim[1:8,]
 emo_sum_muslim$percent<-(emo_sum_muslim$count/sum(emo_sum_muslim$count))*100
-
 
 
 Viz_ed_muslim<- ggplot(data=emo_sum_muslim,aes(x=emotion,y=percent))+geom_bar(aes(fill=emotion),stat = "identity")+
@@ -277,22 +280,6 @@ emo_sum_christian$emotion = factor(emo_sum_christian$emotion, levels=emo_sum_chr
 emo_sum_christian <- emo_sum_christian[1:8,]
 emo_sum_christian$percent<-(emo_sum_christian$count/sum(emo_sum_christian$count))*100
 
-## Display graphs with plotly
-#Visualize the emotions from NRC sentiments
-# plot_ly(emo_sum_muslim, x=~emotion, y=~percent, type="bar", color=~emotion) %>%
-# layout(xaxis=list(title=""),  yaxis = list(title = "Emotion count"),
-# showlegend=FALSE,title="Distribution of emotion categories on  Muslim Tweets") %>%
-# layout(yaxis = list(ticksuffix = "%"))
-
-#Visualize the emotions from NRC sentiments
-# plot_ly(emo_sum_christian, x=~emotion, y=~percent, type="bar", color=~emotion) %>%
-# layout(xaxis=list(title=""),  yaxis = list(title = "Emotion count"),
-# showlegend=FALSE,title="Distribution of emotion categories on Christian Tweets") %>%
-# layout(yaxis = list(ticksuffix = "%"))
-
-# subplot(Viz_ed_muslim, Viz_ed_christian, showlegend = FALSE)
-
-
 Viz_ed_christian<- ggplot(data=emo_sum_christian,aes(x=emotion,y=percent))+geom_bar(aes(fill=emotion),stat = "identity")+
    theme(legend.position="none")+ ylab("scores(%)")+ggtitle("Distribution of emotion categories on Christian Tweets")
 
@@ -305,6 +292,7 @@ ggarrange( Viz_ed_christian  + theme(legend.position="none"),
 
 
 ## Topic Model
+This next section will perform topic modelling using LDA for both Islam related tweets and Christianity related tweets. This bit also uses the dataframes read from the CSV files in the word cload section.
 ```{r}
 dtm_muslim <- CreateDtm(tweet_df_muslim$x,
                   doc_names = tweet_df_muslim$X,
@@ -640,6 +628,7 @@ tweets_text <- str_replace_all(tweets_text,"@[a-z,A-Z]*","")
 lean <- data.frame("text" = tweets_text, "location" = tweets_location)
 write.csv(lean, file='location_tweets_clean.csv')
 ```
+
 ## Location Analysis
 ```{r, eval=FALSE}
 location_tweets <- read.csv("location_tweets_clean.csv")
