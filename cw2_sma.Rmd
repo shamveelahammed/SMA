@@ -60,22 +60,31 @@ load_libraries()
 ```{r}
 connect_to_twitter <- function(){
   # DON'T UPLOAD THE KEYS ON GITHUB, AS THIS IS A PUBLIC REPO
-  appname <- ""
-  consumerKey<-	""
+  consumerKey <-""
   consumerSecret<-""
+  
   accessToken<-""
   accessSecret<-""
   # authenticate with Twitter for twitteR
   setup_twitter_oauth (consumerKey, consumerSecret, accessToken, accessSecret)
   
+  
+  # Another account is used for premium API, If the same keys were used for both libraries at once, might cause token issues.
+  appname_premium <- ""
+  consumerKey_premium<-	""
+  consumerSecret_premium<-""
+  accessToken_premium<-""
+  accessSecret_premium<-""
+  
   # authenticate with Twitter for rtweet
   twitter_token <- create_token(
-  app = appname,
-  consumer_key = consumerKey,
-  consumer_secret = consumerSecret,
-  access_token = accessToken,
-  access_secret = accessSecret)
-
+  app = appname_premium,
+  consumer_key = consumerKey_premium,
+  consumer_secret = consumerSecret_premium,
+  access_token = accessToken_premium,
+  access_secret = accessSecret_premium)
+  
+  return(twitter_token)
 }
 ```
 
@@ -83,7 +92,7 @@ connect_to_twitter <- function(){
 ## Collect all Muslim Tweets
 Search for multiple Islam related keywords and bind the results together.
 ```{r, eval=FALSE}
-connect_to_twitter()
+twitter_token = connect_to_twitter()
 
 
 # search for tweets by keyword "MUSLIM"
@@ -417,28 +426,30 @@ Viz1
 #### Fetch the tweets
 ```{r, eval=FALSE}
 
+# Get tweets for last 30 days...
 month_days <- seq(1, 30, by=1)
 
 for( i in month_days) {
   
     # Prepare parameters
-    t_rnd = sample(1:(24*60*60), 1)
+    t_rnd = sample(1:(24*60*60), 1) # Get a random offest in random time in each day : i
     toDate <- format(Sys.time() - 60 * 60 * 24 * i - t_rnd, "%Y%m%d%H%M")
     
     # Apply search for the whole month usign the the word "muslims".
-    tweets_tmp <- search_30day("muslims", n = 100 ,env_name = "dev30", parse=TRUE, toDate = toDate)
+    # Using Enviroment : "dev30" (30 day premium Twtter API)
+    tweets_tmp <- search_30day("muslims", n = 100 ,env_name = "dev30", parse=TRUE, toDate = toDate, token = twitter_token)
     
     # Append to the list 'tweets' if not there, create it !.
-    if(exists("tweets")) {
-        tweets <- rbind(tweets, tweets_tmp)
+    if(exists("tweets_30_days")) {
+        tweets_30_days <- rbind(tweets_30_days, tweets_tmp)
     } else {
-        tweets <- tweets_tmp
+        tweets_30_days <- tweets_tmp
     }
   
 }
 
 # Export the results as CSV.
-write_as_csv(tweets, '30_day_tweets.csv')
+write_as_csv(tweets_30_days, '30_day_tweets.csv')
 ```
 
 #### Clean up and prepare the tweets
@@ -447,7 +458,7 @@ write_as_csv(tweets, '30_day_tweets.csv')
 # import your data set to analyse,
 # ensure it is in the same directory as your code, otherwise you need to add the path
 dataset_csv <- read.csv(file="30_day_tweets.csv")
-tweets.df <- dataset_csv['text']
+tweets.df <- dataset_csv$text
 
 # convert text to lowercase
 tweets.df<-tolower(tweets.df)
@@ -841,7 +852,7 @@ ggarrange(Viz_vienna + theme(legend.position="none"),
 
 ```{r,eval=FALSE}
 
-
+# Function to get tweets given a year and a query with keywords.
 get_tweets_by_year <- function(year , keyword) {
 
   library(anytime)
@@ -854,7 +865,7 @@ get_tweets_by_year <- function(year , keyword) {
     toDate <- format(anytime(year_unix + t_rnd), "%Y%m%d%H%M")
     
     # "lang:en muslims"
-    tweets_tmp <- search_fullarchive(keyword,n = 50, env_name = "dev", toDate = toDate, parse=TRUE)
+    tweets_tmp <- search_fullarchive(keyword, n = 50, env_name = "dev", toDate = toDate, parse=TRUE,token = twitter_token)
     
     # Append to the list 'tweets' if not there, create it !.
     if(exists("tweets")) {
@@ -862,7 +873,6 @@ get_tweets_by_year <- function(year , keyword) {
     } else {
         tweets <- tweets_tmp
     }
-    
     
   }
   
@@ -873,17 +883,117 @@ get_tweets_by_year <- function(year , keyword) {
 
 }
 
-#TODO: Fix an error with the function
-tweet_year <- get_tweets_by_year(2019 , "lang:en muslims")
+# Function to Get Sentiment score for each year using the formala:
+# Match_pos - Match_neg
+score.sentiment <- function(sentences, pos.words, neg.words, .progress='none')
+{
+  # Parameters
+  # sentences: vector of text to score
+  # pos.words: vector of words of postive sentiment
+  # neg.words: vector of words of negative sentiment
+  # .progress: passed to laply() to control of progress bar
+  
+  pos <- readLines("input/positive_words.txt")
+  neg <- readLines("input/negative_words.txt")
+  
+  # create simple array of scores with laply
+  scores <- laply(sentences,
+                  function(sentence, pos.words, neg.words)
+                  {
+                    # remove punctuation
+                    sentence <- gsub("[[:punct:]]", "", sentence)
+                    # remove control characters
+                    sentence <- gsub("[[:cntrl:]]", "", sentence)
+                    # remove digits
+                    sentence <- gsub('\\d+', '', sentence)
+                    
+                    #convert to lower
+                    sentence <- tolower(sentence)
+                    
+                    
+                    # split sentence into words with str_split (stringr package)
+                    word.list <- str_split(sentence, "\\s+")
+                    words <- unlist(word.list)
+                    
+                    # compare words to the dictionaries of positive & negative terms
+                    pos.matches <- match(words, pos)
+                    neg.matches <- match(words, neg)
+                    
+                    # get the position of the matched term or NA
+                    # we just want a TRUE/FALSE
+                    pos.matches <- !is.na(pos.matches)
+                    neg.matches <- !is.na(neg.matches)
+                    
+                    # final score
+                    score <- sum(pos.matches) - sum(neg.matches)
+                    return(score)
+                  }, pos.words, neg.words, .progress=.progress )
+  # data frame with scores for each sentence
+  scores.df <- data.frame(text=sentences, score=scores)
+  return(scores.df)
+}
+
+# Function to clean and prepare the tweets.
+clean_tweets <- function(csv_file) {
+  
+# import your data set to analyse,
+# ensure it is in the same directory as your code, otherwise you need to add the path
+dataset_csv <- read_twitter_csv(csv_file)
+tweet_year_clean <- dataset_csv['text']
+
+# convert text to lowercase
+tweet_year_clean<-tolower(tweet_year_clean)
+
+# get rid of problem characters
+tweet_year_clean <- sapply(tweet_year_clean,function(row) iconv(row, "latin1", "ASCII", sub=""))
+
+# remove punctuation, digits, special characters etc
+tweet_year_clean = gsub("&amp", "", tweet_year_clean)
+tweet_year_clean= gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", tweet_year_clean)
+tweet_year_clean = gsub("@\\w+", "", tweet_year_clean)
+tweet_year_clean= gsub("[[:punct:]]", "", tweet_year_clean)
+tweet_year_clean = gsub("[[:digit:]]", "", tweet_year_clean)
+tweet_year_clean = gsub("http\\w+", "", tweet_year_clean)
+tweet_year_clean = gsub("[ \t]{2,}", "", tweet_year_clean)
+tweet_year_clean= gsub("^\\s+|\\s+$", "", tweet_year_clean) 
+
+
+# get rid of unnecessary spaces
+tweet_year_clean <- str_replace_all(tweet_year_clean," "," ")
+
+# get rid of URLs
+#tweets.df <- str_replace_all(tweets.df, "http://t.co/[a-z,A-Z,0-9]*{8}","")
+
+# take out the retweet header (there is only one)
+tweet_year_clean <- str_replace(tweet_year_clean,"RT @[a-z,A-Z]*: ","")
+
+# get rid of hashtags
+tweet_year_clean <- str_replace_all(tweet_year_clean,"#[a-z,A-Z]*","")
+
+# get rid of references to other screen names
+tweet_year_clean <- str_replace_all(tweet_year_clean,"@[a-z,A-Z]*","") 
+  
+return(tweet_year_clean)
+
+}
+
+
+```
+
+
+```{r,eval=FALSE}
+# Repeat for each year, 2017 - 2020
+tweet_year <- get_tweets_by_year(2015 , "lang:en muslims")
+
+tweet_year_clean <- clean_tweets("2015-tweets.csv")
 
 # using the function to calculate sentiment score for the year
-scores_year <- score.sentiment(tweet_year, pos.txt, neg.txt, .progress='text')
+scores_year <- score.sentiment(tweet_year_clean, pos.txt, neg.txt, .progress='text')
 
 # the value is recorded for the given year.
+scores_year$score_chr <- ifelse(scores_year$score < 0,'Negtive', ifelse(scores_year$score > 0, 'Positive', 'Neutral'))
 View(scores_year)
 
-#Summary of the sentiment scores
-summary(scores_year)
 
 ```
 
