@@ -7,7 +7,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown for CW2 SOCIAL MEDIA ANALYSIS on ISLAMOPHOBIA
+# R Markdown for CW2 SOCIAL MEDIA ANALYSIS on ISLAMOPHOBIA
 
 ## Function to  install and load all required libraries
 ```{r}
@@ -218,7 +218,7 @@ wordcloud(christian_corpus,min.freq = 10,colors=brewer.pal(6, "Dark2"),scale=c(3
 
 
 ## Sentiment Analysis
-This code will perform the sentiment analysis comparison of Islam tweets and Christian tweet, by using the get_nrc_sentiment function to do so. This bit also uses the dataframes read from the CSV files in the word cload section.
+This code will perform the sentiment analysis comparison of Islam tweets and Christian tweet, by using the get_nrc_sentiment function to do so. This bit also uses the dataframes read from the CSV files in the word cloud section.
 ```{r}
 tweet_df_muslim$x <- as.character(tweet_df_muslim$x)
 muslim_text<- tweet_df_muslim$x
@@ -267,7 +267,7 @@ Viz_sa_muslim <- ggplot(data=Sentimentscores_muslim,aes(x=sentiment,y=Score))+ge
 
 
 ## Emotion Plot
-This section will perform the emotion plot coparison of Islam tweets and Christian tweets. It extract the emotion information from the results of the get_nrc_sentiment function. This bit also uses the dataframes read from the CSV files in the word cload section.
+This section will perform the emotion plot coparison of Islam tweets and Christian tweets. It extract the emotion information from the results of the get_nrc_sentiment function. This bit also uses the dataframes read from the CSV files in the word cloud section.
 ```{r}
 # Muslim Tweets
 emotions_muslim <- get_nrc_sentiment(muslim_text)
@@ -422,8 +422,8 @@ Viz1
 
 ```
 
-### Word cloud for tweets in the last month.
-#### Fetch the tweets
+## Word cloud for tweets in the last month.
+### Fetch the tweets
 ```{r, eval=FALSE}
 
 # Get tweets for last 30 days...
@@ -452,8 +452,7 @@ for( i in month_days) {
 write_as_csv(tweets_30_days, '30_day_tweets.csv')
 ```
 
-#### Clean up and prepare the tweets
-
+### Clean up and prepare the tweets
 ```{r, eval=FALSE}
 # import your data set to analyse,
 # ensure it is in the same directory as your code, otherwise you need to add the path
@@ -493,8 +492,7 @@ tweets.df <- str_replace_all(tweets.df,"#[a-z,A-Z]*","")
 tweets.df <- str_replace_all(tweets.df,"@[a-z,A-Z]*","") 
 ```
 
-#### Prepare and generate the world cloud
-
+### Prepare and generate the world cloud
 ```{r, eval=FALSE}
 # Create a copy
 tweets2.df <- tweets.df
@@ -604,9 +602,9 @@ save_as_csv(all_location_tweets, "location_tweets.csv", prepend_ids = TRUE, na =
   fileEncoding = "UTF-8")
 
 ```
+
 ### Data Cleaning
 We will now clean the data above, and only select columns which we are interested.
-
 ```{r, eval=FALSE}
 # https://bookdown.org/ndphillips/YaRrr/dataframe-column-names.html
 # clean_tweet_data("location_tweets.csv")
@@ -643,7 +641,7 @@ lean <- data.frame("text" = tweets_text, "location" = tweets_location)
 write.csv(lean, file='location_tweets_clean.csv')
 ```
 
-## Location Analysis
+### Location Analysis
 Here we get positive, negative and neutral sentiment scores for each of the cities.
 ```{r, eval=FALSE}
 location_tweets <- read.csv("location_tweets_clean.csv")
@@ -776,7 +774,8 @@ scores_manchester$score_chr <- ifelse(scores_manchester$score < 0,'Negative', if
 scores_manchester$score_chr <- as.factor(scores_manchester$score_chr)
 names(scores_manchester)[3]<-paste("Sentiment")
 ```
-## Visualisation
+
+### Visualisation
 We then plot the scores for all ten cities into one plot.
 ```{r eval=FALSE}
 text_size <- 12
@@ -824,7 +823,8 @@ Viz_manchester <- ggplot(scores_manchester, aes(x=Sentiment, fill=Sentiment))+ g
   theme(text =element_text(size=text_size))+theme(axis.text = element_blank())+ theme(legend.position="none")+ coord_cartesian(ylim=c(0,0.6)) + scale_fill_manual(values=c("firebrick1", "grey50", "limeGREEN"))
 
 ```
-##Multiplot
+
+### Multiplot
 ```{r eval=FALSE}
 library(ggplot2)
 # install.packages("gridExtra")
@@ -849,7 +849,6 @@ ggarrange(Viz_vienna + theme(legend.position="none"),
 
 ## Islamophobia over the years
 ### Search Tweets on the year and based on random periods througout the year.
-
 ```{r,eval=FALSE}
 
 # Function to get tweets given a year and a query with keywords.
@@ -977,10 +976,9 @@ return(tweet_year_clean)
 
 }
 
-
 ```
 
-
+### Vizuaise Islamophobia over the years
 ```{r,eval=FALSE}
 # Repeat for each year, 2017 - 2020
 tweet_year <- get_tweets_by_year(2015 , "lang:en muslims")
